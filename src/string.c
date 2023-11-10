@@ -7,6 +7,7 @@ static struct string {
 	int len;
 	struct string *link;
 } *buckets[1024];
+
 static int scatter[] = {	/* map characters to random values */
 	2078917053, 143302914, 1027100827, 1953210302, 755253631,
 	2002600785, 1405390230, 45248011, 1099951567, 433832350,
@@ -61,6 +62,9 @@ static int scatter[] = {	/* map characters to random values */
 	92778659, 1856406685, 1884137923, 53392249, 1735424165,
 	1602280572
 };
+
+
+// `string`函数对以`null`结尾的字符串`str`进行复制
 char *string(const char *str) {
 	const char *s;
 
@@ -68,6 +72,9 @@ char *string(const char *str) {
 		;
 	return stringn(str, s - str);
 }
+
+
+// `stringd`把证书`n`按十进制转换为字符串形式，类似于`itoa`
 char *stringd(long n) {
 	char str[25], *s = str + sizeof (str);
 	unsigned long m;
@@ -85,6 +92,9 @@ char *stringd(long n) {
 		*--s = '-';
 	return stringn(s, str + sizeof (str) - s);
 }
+
+
+// `stringn`对字符串`str`前`len`个字节进行复制
 char *stringn(const char *str, int len) {
 	int i;
 	unsigned int h;

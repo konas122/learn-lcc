@@ -6,6 +6,8 @@
 #include <limits.h>
 #include <string.h>
 
+
+// `NEW`指向一个尚未初始化的空间的指针
 #define NEW(p,a) ((p) = allocate(sizeof *(p), (a)))
 #define NEW0(p,a) memset(NEW((p),(a)), 0, sizeof *(p))
 #define isaddrop(op) (specific(op)==ADDRG+P || specific(op)==ADDRL+P \
