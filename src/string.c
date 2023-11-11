@@ -7,6 +7,8 @@ static struct string {
 	int len;
 	struct string *link;
 } *buckets[1024];
+// 每个哈希桶都保存了一个字符串链表，链表中的字符串哈希值都是相同的
+
 
 static int scatter[] = {	/* map characters to random values */
 	2078917053, 143302914, 1027100827, 1953210302, 755253631,
@@ -74,11 +76,12 @@ char *string(const char *str) {
 }
 
 
-// `stringd`把证书`n`按十进制转换为字符串形式，类似于`itoa`
+// `stringd`把证书`n`按十进制转换为字符串形式，类似于`itoa`，并存放至私有缓冲区
 char *stringd(long n) {
 	char str[25], *s = str + sizeof (str);
 	unsigned long m;
 
+    // `m`为无符号值，下面将将`n`取绝对值，并赋值给`m`
 	if (n == LONG_MIN)
 		m = (unsigned long)LONG_MAX + 1;
 	else if (n < 0)
@@ -86,9 +89,10 @@ char *stringd(long n) {
 	else
 		m = n;
 	do
-		*--s = m%10 + '0';
-	while ((m /= 10) != 0);
-	if (n < 0)
+        *--s = m % 10 + '0';
+    while ((m /= 10) != 0);
+
+    if (n < 0)
 		*--s = '-';
 	return stringn(s, str + sizeof (str) - s);
 }
@@ -102,11 +106,14 @@ char *stringn(const char *str, int len) {
 	struct string *p;
 
 	assert(str);
+
+    // 求哈希值 良好的哈希函数最好能将字符串对应的函数值均匀分布在`0`和`NELEMS(buckets)-1`
 	for (h = 0, i = len, end = str; i > 0; i--)
-		h = (h<<1) + scatter[*(unsigned char *)end++];
-	h &= NELEMS(buckets)-1;
-	for (p = buckets[h]; p; p = p->link)
-		if (len == p->len) {
+        h = (h << 1) + scatter[*(unsigned char *)end++];
+
+    h &= NELEMS(buckets) - 1;
+    for (p = buckets[h]; p; p = p->link)
+        if (len == p->len) {
 			const char *s1 = str;
 			char *s2 = p->str;
 			do {
@@ -114,12 +121,12 @@ char *stringn(const char *str, int len) {
 					return p->str;
 			} while (*s1++ == *s2++);
 		}
-	{
+	{   // next指向当前内存块的下一个待分配的字节，stlimit指向当前内存块最后一个字节之后的字节
 		static char *next, *strlimit;
 		if (len + 1 >= strlimit - next) {
-			int n = len + 4*1024;
-			next = allocate(n, PERM);
-			strlimit = next + n;
+            int n = len + 4 * 1024;     // 分配的内存至少有4KB
+            next = allocate(n, PERM);   // PERM表示永久的存储分配区
+            strlimit = next + n;
 		}
 		NEW(p, PERM);
 		p->len = len;

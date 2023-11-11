@@ -75,11 +75,16 @@ typedef struct swtch *Swtch;
 
 typedef struct symbol *Symbol;
 
+
+// `src`域: 指明了该符号在源代码中定义的位置
 typedef struct coord {
 	char *file;
 	unsigned x, y;
 } Coordinate;
+
+
 typedef struct table *Table;
+
 
 typedef union value {
 	long i;
@@ -88,6 +93,8 @@ typedef union value {
 	void *p;
 	void (*g)(void);
 } Value;
+
+
 typedef struct tree *Tree;
 
 typedef struct type *Type;
@@ -101,10 +108,13 @@ typedef struct {
 	void *xt;
 } Xtype;
 
+
 #include "config.h"
 typedef struct metrics {
 	unsigned char size, align, outofline;
 } Metrics;
+
+
 typedef struct interface {
 	Metrics charmetric;
 	Metrics shortmetric;
@@ -150,6 +160,8 @@ void (*stabsym)  (Symbol);
 void (*stabtype) (Symbol);
 	Xinterface x;
 } Interface;
+
+
 typedef struct binding {
 	char *name;
 	Interface *ir;
@@ -157,6 +169,7 @@ typedef struct binding {
 
 extern Binding bindings[];
 extern Interface *IR;
+
 typedef struct {
 	List blockentry;
 	List blockexit;
@@ -174,6 +187,7 @@ enum {
 #include "token.h"
 	LAST
 };
+
 struct node {
 	short op;
 	short count;
@@ -182,6 +196,7 @@ struct node {
 	Node link;
 	Xnode x;
 };
+
 enum {
 	F=FLOAT,
 	I=INT,
@@ -190,6 +205,7 @@ enum {
 	V=VOID,
 	B=STRUCT
 };
+
 #define gop(name,value) name=value<<4,
 #define op(name,type,sizes)
 
@@ -198,14 +214,17 @@ enum {
 	LASTOP
 };
 
+
 #undef gop
 #undef op
+
 enum { CODE=1, BSS, DATA, LIT };
 enum { PERM=0, FUNC, STMT };
 struct list {
 	void *x;
 	List link;
 };
+
 
 struct code {
 	enum { Blockbeg, Blockend, Local, Address, Defpoint,
@@ -243,6 +262,8 @@ struct code {
 
 	} u;
 };
+
+
 struct swtch {
 	Symbol sym;
 	int lab;
@@ -252,6 +273,8 @@ struct swtch {
 	long *values;
 	Symbol *labels;
 };
+
+
 struct symbol {
 	char *name;
 	int scope;
@@ -304,7 +327,13 @@ struct symbol {
 	} u;
 	Xsymbol x;
 };
+
+
+// `scope`域
+// 第`k`曾中声明的局部变量，其`scope`域等于`LOCAL+k`
 enum { CONSTANTS=1, LABELS, GLOBAL, PARAM, LOCAL };
+
+
 struct tree {
 	int op;
 	Type type;

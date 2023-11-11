@@ -14,6 +14,8 @@ struct table {
 	} *buckets[256];
 	Symbol all;
 };
+
+
 #define HASHSIZE NELEMS(((Table)0)->buckets)
 static struct table
 	cns = { CONSTANTS },
