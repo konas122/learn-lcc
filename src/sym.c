@@ -5,32 +5,44 @@ static char rcsid[] = "$Id$";
 
 #define equalp(x) v.x == p->sym.u.c.v.x
 
+
+// 该结构将某作用域内的符号保存在一个哈希表中
 struct table {
-	int level;
-	Table previous;
+	int level;          // 指明作用域
+	Table previous;     // 指向外层作用域对应的`table`
 	struct entry {
 		struct symbol sym;
 		struct entry *link;
-	} *buckets[256];
-	Symbol all;
+	} *buckets[256];    // 指针数组，每个指针指向一个哈希链
+    /*
+    若要查找一个符号，先根据关键字计算出哈希值，找到相应的哈希链，
+    然后通过遍历链表找到相应的符号； 若未找到该符号，
+    则通过`previous`域在外层作用域的入口中进行查找
+    */
+	Symbol all;         // 指向由当前及外层作用域中所有符号组成的组成的列表的头
 };
 
 
 #define HASHSIZE NELEMS(((Table)0)->buckets)
+
 static struct table
 	cns = { CONSTANTS },
 	ext = { GLOBAL },
 	ids = { GLOBAL },
 	tys = { GLOBAL };
+
+// Tabel: pointer to struct table
 Table constants   = &cns;
-Table externals   = &ext;
-Table identifiers = &ids;
-Table globals     = &ids;
-Table types       = &tys;
-Table labels;
+Table externals   = &ext;   // 声明为`extern`的标识符，用于警告外部标识符声明冲突
+Table identifiers = &ids;   // 一般标识符
+Table globals     = &ids;   // 保存具有文件作用域的标识符
+Table types       = &tys;   // 编译器定义的类型标记
+Table labels;               // 编译器定义的内部标号
+
 int level = GLOBAL;
 static int tempid;
 List loci, symbols;
+
 
 Table newtable(int arena) {
 	Table new;
@@ -39,6 +51,8 @@ Table newtable(int arena) {
 	return new;
 }
 
+
+// 动态分配内层嵌套的作用域表
 Table table(Table tp, int level) {
 	Table new = newtable(FUNC);
 	new->previous = tp;
@@ -47,29 +61,51 @@ Table table(Table tp, int level) {
 		new->all = tp->all;
 	return new;
 }
+
+
+/* 
+`all`域初始化成指向外层表的`list`。因此，从`table`的`all`域开始，
+就可以访问所有作用域的所有符号。`foreach`的作用就是扫描一个表   
+*/
 void foreach(Table tp, int lev, void (*apply)(Symbol, void *), void *cl) {
 	assert(tp);
+
+    // 循环查找与作用域对应的表
 	while (tp && tp->level > lev)
 		tp = tp->previous;
+
 	if (tp && tp->level == lev) {
 		Symbol p;
 		Coordinate sav;
-		sav = src;
+		sav = src;  // 临时存放`src`值
 		for (p = tp->all; p && p->scope == lev; p = p->up) {
+            // 全局变量`src`存放符号定义的位置
 			src = p->src;
+            // 并为该符号应用`apply`函数
+            // `cl`是一个指针，指向与调用相关的数据`closure`
 			(*apply)(p, cl);
+            // `src`中保存的细腻些使得`apply`引发的诊断程序能够指向正确的源程序坐标
 		}
 		src = sav;
 	}
 }
+
+
+// 进入新的作用域时，全局变量`level`会递增
 void enterscope(void) {
 	if (++level == LOCAL)
 		tempid = 0;
 }
+
+
+// 退出作用域时，全局变量`level`将递减，相应的`identifiers`和`types`表也会随之撤销
 void exitscope(void) {
+    // 在撤销作用域中定义的带标记类型，`rmtypes`将从其类型缓冲中删除
 	rmtypes(level);
+
 	if (types->level == level)
 		types = types->previous;
+
 	if (identifiers->level == level) {
 		if (Aflag >= 2) {
 			int n = 0;
@@ -82,17 +118,27 @@ void exitscope(void) {
 		}
 		identifiers = identifiers->previous;
 	}
+
 	assert(level >= GLOBAL);
 	--level;
 }
-Symbol install(const char *name, Table *tpp, int level, int arena) {
-	Table tp = *tpp;
-	struct entry *p;
-	unsigned h = (unsigned long)name&(HASHSIZE-1);
 
-	assert(level == 0 || level >= tp->level);
+
+// `install`函数为给定的`name`分配一个符号，并把该符号加入与给定作用域层数相对应的表中，
+// 如果需要，还将建立一个新表。
+Symbol install(const char *name, Table *tpp, int level, int arena) {
+	Table tp = *tpp;    // `tpp`：指向表的指针
+	struct entry *p;
+    // 根据`name`计算哈希值
+    unsigned h = (unsigned long)name & (HASHSIZE - 1);
+
+    // `level`必须为零或不小于该表的作用域层数
+    assert(level == 0 || level >= tp->level);
+
 	if (level > 0 && tp->level < level)
 		tp = *tpp = table(tp, level);
+    
+    // 新分配空间，并初始化为零
 	NEW0(p, arena);
 	p->sym.name = (char *)name;
 	p->sym.scope = level;
@@ -100,8 +146,11 @@ Symbol install(const char *name, Table *tpp, int level, int arena) {
 	tp->all = &p->sym;
 	p->link = tp->buckets[h];
 	tp->buckets[h] = p;
+
 	return &p->sym;
 }
+
+
 Symbol relocate(const char *name, Table src, Table dst) {
 	struct entry *p, **q;
 	Symbol *r;
@@ -132,43 +181,66 @@ Symbol relocate(const char *name, Table src, Table dst) {
 	dst->all = &p->sym;
 	return &p->sym;
 }
+
+
+// 在表中查找一个名字
 Symbol lookup(const char *name, Table tp) {
 	struct entry *p;
-	unsigned h = (unsigned long)name&(HASHSIZE-1);
+    // 根据`name`计算哈希值
+    unsigned h = (unsigned long)name & (HASHSIZE - 1);
 
-	assert(tp);
+    assert(tp);
+
+    // 循环扫描外层作用域
 	do
+        // 循环扫描哈希链
 		for (p = tp->buckets[h]; p; p = p->link)
 			if (name == p->sym.name)
 				return &p->sym;
 	while ((tp = tp->previous) != NULL);
+
 	return NULL;
 }
+
+
+// 产生标号 `genlabel`也可以用于产生唯一的、匿名的名字，如产生一个临时变量的名字
 int genlabel(int n) {
 	static int label = 1;
 
 	label += n;
 	return label - n;
 }
+
+
+// 输入标号数，返回该表号对应的符号，
+// 若需要，则会建立该符号、进行初始化并通知编译器后端
 Symbol findlabel(int lab) {
 	struct entry *p;
-	unsigned h = lab&(HASHSIZE-1);
+    // 根据`lab`计算哈希值
+    unsigned h = lab & (HASHSIZE - 1);
 
-	for (p = labels->buckets[h]; p; p = p->link)
+    for (p = labels->buckets[h]; p; p = p->link)
 		if (lab == p->sym.u.l.label)
 			return &p->sym;
+
 	NEW0(p, FUNC);
+
 	p->sym.name = stringd(lab);
 	p->sym.scope = LABELS;
 	p->sym.up = labels->all;
 	labels->all = &p->sym;
 	p->link = labels->buckets[h];
 	labels->buckets[h] = p;
+    // `generated`是一位二进制位域(symbol flags)，表示一个产生的符号
 	p->sym.generated = 1;
 	p->sym.u.l.label = lab;
-	(*IR->defsymbol)(&p->sym);
-	return &p->sym;
+
+    (*IR->defsymbol)(&p->sym);
+
+    return &p->sym;
 }
+
+
 Symbol constant(Type ty, Value v) {
 	struct entry *p;
 	unsigned h = v.u&(HASHSIZE-1);

@@ -331,8 +331,7 @@ struct symbol {
 
 // `scope`域
 // 第`k`曾中声明的局部变量，其`scope`域等于`LOCAL+k`
-enum { CONSTANTS=1, LABELS, GLOBAL, PARAM, LOCAL };
-
+enum { CONSTANTS = 1, LABELS, GLOBAL, PARAM, LOCAL };
 
 struct tree {
 	int op;
