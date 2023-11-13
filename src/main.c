@@ -21,6 +21,8 @@ static char *currentfile;       /* current file name */
 static int currentline;		/* current line number */
 static FILE *srcfp;		/* stream for current file, if non-NULL */
 static int srcpos;		/* position of srcfp, if srcfp is non-NULL */
+
+
 int main(int argc, char *argv[]) {
 	int i, j;
 	for (i = argc - 1; i > 0; i--)

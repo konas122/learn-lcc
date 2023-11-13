@@ -243,11 +243,18 @@ Symbol findlabel(int lab) {
 
 Symbol constant(Type ty, Value v) {
 	struct entry *p;
-	unsigned h = v.u&(HASHSIZE-1);
-	static union { int x; char endian; } little = { 1 };
+    unsigned h = v.u & (HASHSIZE - 1);
 
+    static union
+    {
+        int x;
+        char endian;
+    } little = {1};
+
+    // `unqual`函数返回类型的未限定形式，即去掉类型中的`const`和`volatile`
 	ty = unqual(ty);
 	for (p = constants->buckets[h]; p; p = p->link)
+        // `eqtype`用于测试类型是否相同
 		if (eqtype(ty, p->sym.type, 1))
 			switch (ty->op) {
 			case INT:      if (equalp(i)) return &p->sym; break;
@@ -279,30 +286,43 @@ Symbol constant(Type ty, Value v) {
 	constants->all = &p->sym;
 	constants->buckets[h] = p;
 	if (ty->u.sym && !ty->u.sym->addressed)
+        // `constant`调用`defsymbol`，通知编译后端这些常量可以出现在`dag`(有向无环图)中
 		(*IR->defsymbol)(&p->sym);
 	p->sym.defined = 1;
 	return &p->sym;
 }
+
+
+// 对于基本类型，如整型和浮点类型，`intconst`封装了建立和通知整型常量的功能
 Symbol intconst(int n) {
 	Value v;
 
 	v.i = n;
 	return constant(inttype, v);
 }
+
+
+// `genident`根据给定的类型、存储类型和作用域，产生一个标识符并初始化
 Symbol genident(int scls, Type ty, int lev) {
 	Symbol p;
 
 	NEW0(p, lev >= LOCAL ? FUNC : PERM);
+    // `name`是有数字组成的字符串
 	p->name = stringd(genlabel(1));
 	p->scope = lev;
 	p->sclass = scls;
 	p->type = ty;
+    // `generated`标志位设为 1
 	p->generated = 1;
 	if (lev == GLOBAL)
-		(*IR->defsymbol)(p);
+    // `IR`指向一个数据结构，该数据结构连接前端和某个具体的后端
+    // 而产生的全局变量在此通过调用后端`defsymbol`接口函数通知后端
+		(*IR->defsymbol)(p);    
 	return p;
 }
 
+
+// 临时变量是另一类产生的变量，都有`temporary`标志
 Symbol temporary(int scls, Type ty) {
 	Symbol p;
 
@@ -311,11 +331,17 @@ Symbol temporary(int scls, Type ty) {
 	p->scope = level < LOCAL ? LOCAL : level;
 	p->sclass = scls;
 	p->type = ty;
-	p->temporary = 1;
+	p->temporary = 1;   // `temporary`标志
 	p->generated = 1;
 	return p;
 }
+
+
+// 编译后端又是也需要产生临时变量，比如为了腾空寄存器
+// 后端由于不知道类型系统，所以不能直接调用`temporary`
+// 该函数会发生在代码生成的时候
 Symbol newtemp(int sclass, int tc, int size) {
+    // 先通过`btot`将改后缀映射为相应的类型，再利用该类型调用`temporary`
 	Symbol p = temporary(sclass, btot(tc, size));
 
 	(*IR->local)(p);
@@ -323,14 +349,17 @@ Symbol newtemp(int sclass, int tc, int size) {
 	return p;
 }
 
+
 Symbol allsymbols(Table tp) {
 	return tp->all;
 }
+
 
 void locus(Table tp, Coordinate *cp) {
 	loci    = append(cp, loci);
 	symbols = append(allsymbols(tp), symbols);
 }
+
 
 void use(Symbol p, Coordinate src) {
 	Coordinate *cp;
@@ -339,6 +368,8 @@ void use(Symbol p, Coordinate src) {
 	*cp = src;
 	p->uses = append(cp, p->uses);
 }
+
+
 /* findtype - find type ty in identifiers */
 Symbol findtype(Type ty) {
 	Table tp = identifiers;
@@ -355,6 +386,7 @@ Symbol findtype(Type ty) {
 	return NULL;
 }
 
+
 /* mkstr - make a string constant */
 Symbol mkstr(char *str) {
 	Value v;
@@ -366,6 +398,7 @@ Symbol mkstr(char *str) {
 		p->u.c.loc = genident(STATIC, p->type, GLOBAL);
 	return p;
 }
+
 
 /* mksymbol - make a symbol for name, install in &globals if sclass==EXTERN */
 Symbol mksymbol(int sclass, const char *name, Type ty) {
@@ -384,6 +417,7 @@ Symbol mksymbol(int sclass, const char *name, Type ty) {
 	p->defined = 1;
 	return p;
 }
+
 
 /* vtoa - return string for the constant v of type ty */
 char *vtoa(Type ty, Value v) {
