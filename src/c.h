@@ -25,19 +25,23 @@
 #define opkind(op)  ((op)&~0x3F0)
 #define opsize(op)  ((op)>>10)
 #define optype(op)  ((op)&0xF)
+
 #ifdef __LCC__
 #ifndef __STDC__
 #define __STDC__
 #endif
 #endif
+
 #define NELEMS(a) ((int)(sizeof (a)/sizeof ((a)[0])))
-#undef roundup
+#undef  roundup
 #define roundup(x,n) (((x)+((n)-1))&(~((n)-1)))
 #define mkop(op,ty) (specific((op) + ttob(ty)))
 
 #define extend(x,ty) ((x)&(1<<(8*(ty)->size-1)) ? (x)|((~0UL)<<(8*(ty)->size-1)) : (x)&ones(8*(ty)->size))
 #define ones(n) ((n)>=8*sizeof (unsigned long) ? ~0UL : ~((~0UL)<<(n)))
 
+
+// 类型断言
 #define isqual(t)     ((t)->op >= CONST)
 #define unqual(t)     (isqual(t) ? (t)->type : (t))
 
@@ -291,18 +295,20 @@ struct symbol {
 	unsigned defined:1;
 	Type type;
 	float ref;
+ 
+
 	union {
 		struct {
 			int label;
 			Symbol equatedto;
-		} l;
-		struct {
-			unsigned cfields:1;
+        } l;
+        struct {
+            unsigned cfields:1;
 			unsigned vfields:1;
 			Table ftab;		/* omit */
 			Field flist;
-		} s;
-		int value;
+        } s;
+        int value;
 		Symbol *idlist;
 		struct {
 			Value min, max;
@@ -333,6 +339,7 @@ struct symbol {
 // 第`k`曾中声明的局部变量，其`scope`域等于`LOCAL+k`
 enum { CONSTANTS = 1, LABELS, GLOBAL, PARAM, LOCAL };
 
+
 struct tree {
 	int op;
 	Type type;
@@ -345,14 +352,19 @@ struct tree {
 		Field field;
 	} u;
 };
-enum {
-	AND=38<<4,
-	NOT=39<<4,
-	OR=40<<4,
-	COND=41<<4,
-	RIGHT=42<<4,
-	FIELD=43<<4
+
+
+enum
+{
+    AND = 38 << 4;
+    NOT = 39 << 4,
+    OR = 40 << 4,
+    COND = 41 << 4,
+    RIGHT = 42 << 4,
+    FIELD = 43 << 4
 };
+
+
 struct type {
 	int op;
 	Type type;
@@ -367,6 +379,8 @@ struct type {
 	} u;
 	Xtype x;
 };
+
+
 struct field {
 	char *name;
 	Type type;
@@ -375,6 +389,8 @@ struct field {
 	short lsb;
 	Field link;
 };
+
+
 extern int assignargs;
 extern int prunetemps;
 extern int nodecount;

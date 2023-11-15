@@ -6,10 +6,13 @@ static char rcsid[] = "$Id$";
 static Field isfield(const char *, Field);
 static Type type(int, Type, int, int, void *);
 
+
 static struct entry {
 	struct type type;
 	struct entry *link;
 } *typetable[128];
+
+
 static int maxlevel;
 
 static Symbol pointersym;
@@ -25,7 +28,7 @@ Type shorttype;			/* signed short int */
 Type signedchar;		/* signed char */
 Type unsignedchar;		/* unsigned char */
 Type unsignedlong;		/* unsigned long int */
-Type unsignedlonglong;		/* unsigned long long int */
+Type unsignedlonglong;	/* unsigned long long int */
 Type unsignedshort;		/* unsigned short int */
 Type unsignedtype;		/* unsigned int */
 Type funcptype;			/* void (*)() */
@@ -65,17 +68,24 @@ static Type xxinit(int op, char *name, Metrics m) {
 	}
 	return ty;
 }
-static Type type(int op, Type ty, int size, int align, void *sym) {
-	unsigned h = (op^((unsigned long)ty>>3))
-&(NELEMS(typetable)-1);
-	struct entry *tn;
 
-	if (op != FUNCTION && (op != ARRAY || size > 0))
+
+// 在`typetable`中搜索指定类型或创建一个新类型
+static Type type(int op, Type ty, int size, int align, void *sym) {
+    // hash code
+    unsigned h = (op ^ ((unsigned long)ty >> 3)) & (NELEMS(typetable) - 1);
+    struct entry *tn;
+
+    // search
+    if (op != FUNCTION && (op != ARRAY || size > 0))
 		for (tn = typetable[h]; tn; tn = tn->link)
+            // 查找具有相同操作符、操作数、大小、对齐字节数和符号表入口
 			if (tn->type.op    == op   && tn->type.type  == ty
 			&&  tn->type.size  == size && tn->type.align == align
 			&&  tn->type.u.sym == sym)
 				return &tn->type;
+
+    // create and initialize
 	NEW0(tn, PERM);
 	tn->type.op = op;
 	tn->type.type = ty;
@@ -84,8 +94,11 @@ static Type type(int op, Type ty, int size, int align, void *sym) {
 	tn->type.u.sym = sym;
 	tn->link = typetable[h];
 	typetable[h] = tn;
+
 	return &tn->type;
 }
+
+
 void type_init(int argc, char *argv[]) {
 	static int inited;
 	int i;
@@ -169,7 +182,10 @@ void type_init(int argc, char *argv[]) {
 	}
 #undef xx
 }
+
+
 void rmtypes(int lev) {
+    // `maxlevel`的值是`typetable`中所有在符号表中有相关入口的类型的`u.sym->scope`的最大值
 	if (maxlevel >= lev) {
 		int i;
 		maxlevel = 0;
@@ -181,14 +197,16 @@ void rmtypes(int lev) {
 				else if (tn->type.u.sym && tn->type.u.sym->scope >= lev)
 					*tq = tn->link;
 				else {
+                    // 删除类型后需要重新计算`maxlevel`
 					if (tn->type.u.sym && tn->type.u.sym->scope > maxlevel)
 						maxlevel = tn->type.u.sym->scope;
 					tq = &tn->link;
 				}
-
 		}
 	}
 }
+
+
 Type ptr(Type ty) {
 	return type(POINTER, ty, IR->ptrmetric.size,
 		IR->ptrmetric.align, pointersym);
