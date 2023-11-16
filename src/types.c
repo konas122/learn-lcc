@@ -207,55 +207,84 @@ void rmtypes(int lev) {
 }
 
 
+// 创建指针类型
 Type ptr(Type ty) {
 	return type(POINTER, ty, IR->ptrmetric.size,
 		IR->ptrmetric.align, pointersym);
 }
+
+
+// 间接访问指针
 Type deref(Type ty) {
 	if (isptr(ty))
 		ty = ty->type;
 	else
 		error("type error: %s\n", "pointer expected");
+    // 处理指向枚举的指针: 间接访问枚举指针必须访问与它关联的未限定整数类型
 	return isenum(ty) ? unqual(ty)->type : ty;
 }
+
+
+// 创建数组
 Type array(Type ty, int n, int a) {
 	assert(ty);
+    // C语言中不允许有函数数组
 	if (isfunc(ty)) {
 		error("illegal type `array of %t'\n", ty);
 		return array(inttype, n, 0);
 	}
+
+    // C语言不能有不完全数组（长度为0的数组）
 	if (isarray(ty) && ty->size == 0)
 		error("missing array size\n");
+
 	if (ty->size == 0) {
+        // C语言不能有`void`类型的数组
 		if (unqual(ty) == voidtype)
 			error("illegal type `array of %t'\n", ty);
+        // 若`lcc`编译选项`-A`出现了两次，则将`Aflag`置为2，表示对非`ANSI`用法报警
 		else if (Aflag >= 2)
 			warning("declaring type array of %t' is undefined\n", ty);
+	} 
 
-	} else if (n > INT_MAX/ty->size) {
+    // `array`禁止大小超过`INT_MAX`字节的数组
+    else if (n > INT_MAX/ty->size) {
 		error("size of `array of %t' exceeds %d bytes\n",
 			ty, INT_MAX);
 		n = 1;
 	}
+
+    // 若`a==0`，结果类型的对齐字节数就是`ty`的对齐字节数
 	return type(ARRAY, ty, n*ty->size,
 		a ? a : ty->align, NULL);
 }
+
+
+// 在许多情况中，数组类型“退化”为指向数组元素类型的指针，例如当数组作为形参的类型
+// `atop`函数就是用来实现这种“退化”
 Type atop(Type ty) {
 	if (isarray(ty))
 		return ptr(ty->type);
 	error("type error: %s\n", "array expected");
 	return ptr(ty);
 }
+
+
+// 构造限定类型，创建 CONST ty, VOLATILE ty 或 CONST+VOLATILE ty
 Type qual(int op, Type ty) {
+    // 若`ty`是数组类型，而限定是作用域数组元素类型的，那则会创建`ARRAY(op,ety)`
 	if (isarray(ty))
 		ty = type(ARRAY, qual(op, ty->type), ty->size,
 			ty->align, NULL);
+    // 若为函数类型
 	else if (isfunc(ty))
 		warning("qualified function type ignored\n");
+    // 若`ty`已经是限定的，且`op`为同一限定符
 	else if (isconst(ty)    && op == CONST
 	||       isvolatile(ty) && op == VOLATILE)
 		error("illegal type `%k %t'\n", op, ty);
 	else {
+        // 若`ty`已经是限定的，且`op`为另一限定符
 		if (isqual(ty)) {
 			op += ty->op;
 			ty = ty->type;
@@ -264,6 +293,9 @@ Type qual(int op, Type ty) {
 	}
 	return ty;
 }
+
+
+// 创建函数类型
 Type func(Type ty, Type *proto, int style) {
 	if (ty && (isarray(ty) || isfunc(ty)))
 		error("illegal return type `%t'\n", ty);
@@ -272,13 +304,21 @@ Type func(Type ty, Type *proto, int style) {
 	ty->u.f.oldstyle = style;
 	return ty;
 }
+
+
+// `freturn`对于函数类型的作用与`deref`对指针类型的作用一样
+// 以函数类型的`ty`作为输入，间接访问`ty`，生成函数返回值类型`ty`
 Type freturn(Type ty) {
 	if (isfunc(ty))
 		return ty->type;
 	error("type error: %s\n", "function expected");
 	return inttype;
 }
+
+
+// ANSI C 支持参数数目可变的函数，如`printf`
 int variadic(Type ty) {
+    // 通过查找函数原型的末尾是否有`void`类型，来测试函数类型是否有长度可变的函数列表
 	if (isfunc(ty) && ty->u.f.proto) {
 		int i;
 		for (i = 0; ty->u.f.proto[i]; i++)
@@ -287,6 +327,8 @@ int variadic(Type ty) {
 	}
 	return 0;
 }
+
+
 Type newstruct(int op, char *tag) {
 	Symbol p;
 

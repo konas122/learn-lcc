@@ -356,7 +356,7 @@ struct tree {
 
 enum
 {
-    AND = 38 << 4;
+    AND = 38 << 4,
     NOT = 39 << 4,
     OR = 40 << 4,
     COND = 41 << 4,
@@ -370,11 +370,16 @@ struct type {
 	Type type;
 	int align;
 	int size;
+    // 该`union`表示函数各个参数
 	union {
 		Symbol sym;
 		struct {
+            // `oldstyle`标记两种函数类型
+            // - 1 表示省略参数的类型
+            // - 0 表示包含参数的类型
 			unsigned oldstyle:1;
-			Type *proto;
+            // 指向以空指针`NULL`结尾的`Type`数组
+			Type *proto;    // `f.proto[i]`是第`i+1`个参数的类型
 		} f;
 	} u;
 	Xtype x;
