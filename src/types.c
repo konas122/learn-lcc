@@ -323,12 +323,14 @@ int variadic(Type ty) {
 		int i;
 		for (i = 0; ty->u.f.proto[i]; i++)
 			;
+        // 参数列表中至少有一个参数
 		return i > 1 && ty->u.f.proto[i-1] == voidtype;
 	}
 	return 0;
 }
 
 
+// 用于创建新的`struct`或`union`，`tag`是标记
 Type newstruct(int op, char *tag) {
 	Symbol p;
 
@@ -336,6 +338,8 @@ Type newstruct(int op, char *tag) {
 	if (*tag == 0)
 		tag = stringd(genlabel(1));
 	else
+        // 首先要检查`struct`或`union`内部变量是否有重定义
+        // 参数和参数类型的作用域为`PARAM`，局部变量的作用域要从`PARAM+1`开始
 		if ((p = lookup(tag, types)) != NULL && (p->scope == level
 		|| p->scope == PARAM && level == PARAM+1)) {
 			if (p->type->op == op && !p->defined)
@@ -343,38 +347,56 @@ Type newstruct(int op, char *tag) {
 			error("redefinition of `%s' previously defined at %w\n",
 				p->name, &p->src);
 		}
+
 	p = install(tag, &types, level, PERM);
 	p->type = type(op, NULL, 0, 0, p);
+
+    // 若创建作用域层数大于`maxlevel`，会调整`maxlevel`
 	if (p->scope > maxlevel)
 		maxlevel = p->scope;
+
 	p->src = src;
+
 	return p->type;
 }
+
+
+// 分配一个`field`结构，将该结构附加到结构类型`ty`符号表入口的域列表中，从而在`ty`中加入一个类型为`fty`的域
 Field newfield(char *name, Type ty, Type fty) {
 	Field p, *q = &ty->u.sym->u.s.flist;
 
+    // 若`name`为空，则会生成一个`name`
 	if (name == NULL)
 		name = stringd(genlabel(1));
 	for (p = *q; p; q = &p->link, p = *q)
 		if (p->name == name)
 			error("duplicate field name `%s' in `%t'\n",
 				name, ty);
+
 	NEW0(p, PERM);
 	*q = p;
 	p->name = name;
 	p->type = fty;
-	if (xref) {							/* omit */
-		if (ty->u.sym->u.s.ftab == NULL)			/* omit */
-			ty->u.sym->u.s.ftab = table(NULL, level);	/* omit */
-		install(name, &ty->u.sym->u.s.ftab, 0, PERM)->src = src;/* omit */
+
+	if (xref) {					    /* omit */
+		if (ty->u.sym->u.s.ftab == NULL)			                /* omit */
+			ty->u.sym->u.s.ftab = table(NULL, level);	            /* omit */
+		install(name, &ty->u.sym->u.s.ftab, 0, PERM)->src = src;    /* omit */
 	}								/* omit */
+
 	return p;
 }
+
+
+// 判断两个类型是否兼容，是返回 1，否则返回 0
 int eqtype(Type ty1, Type ty2, int ret) {
 	if (ty1 == ty2)
 		return 1;
+
 	if (ty1->op != ty2->op)
 		return 0;
+
+    // 若`ty1`或`ty2`是不完全类型
 	switch (ty1->op) {
 	case ENUM: case UNION: case STRUCT:
 	case UNSIGNED: case INT: case FLOAT:
@@ -414,8 +436,11 @@ int eqtype(Type ty1, Type ty2, int ret) {
 		       }
 		       return 0;
 	}
-	assert(0); return 0;
+	assert(0);
+    return 0;
 }
+
+
 Type promote(Type ty) {
 	ty = unqual(ty);
 	switch (ty->op) {

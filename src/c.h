@@ -64,11 +64,15 @@
 #define isscalar(t)   (unqual(t)->op <= POINTER \
                     || unqual(t)->op == ENUM)
 #define isenum(t)     (unqual(t)->op == ENUM)
-#define fieldsize(p)  (p)->bitsize
-#define fieldright(p) ((p)->lsb - 1)
+
+#define fieldsize(p)  (p)->bitsize      // `bitsize`存放位域以位为单位的长度
+#define fieldright(p) ((p)->lsb - 1)    // 返回位域最右位的位号，可用于对位域进行移位
+// 返回位域最左位的位号，可用于符号位域的符号扩展操作
 #define fieldleft(p)  (8*(p)->type->size - \
                         fieldsize(p) - fieldright(p))
-#define fieldmask(p)  (~(fieldsize(p) < 8*unsignedtype->size ? ~0u<<fieldsize(p) : 0u))
+// `fieldmask`是一个掩码，由`bitsize`个 1 组成，用于抽取位域时清除无用的位
+#define fieldmask(p)  (~(fieldsize(p) < 8 * unsignedtype->size ? ~0u << fieldsize(p) : 0u))
+
 typedef struct node *Node;
 
 typedef struct list *List;
@@ -297,34 +301,45 @@ struct symbol {
 	float ref;
  
 
+    // 枚举类型和结构与联合类型相似，只是它没有域，并且其`type`域给出了相关联的整数类型
 	union {
 		struct {
 			int label;
 			Symbol equatedto;
         } l;
+
         struct {
+            // 若结构或联合类型的任意域带有`const`或`volatile`限定符，那么`cfields`和`vfields`都为 1
             unsigned cfields:1;
 			unsigned vfields:1;
 			Table ftab;		/* omit */
+            // `flist`指向用`link`域连接起来的`field`结构
 			Field flist;
         } s;
+
         int value;
+        // 对于枚举类型包含的枚举常量，`idlist`指向以空结尾的`Symbol`数组
 		Symbol *idlist;
+
 		struct {
 			Value min, max;
 		} limits;
+
 		struct {
 			Value v;
 			Symbol loc;
 		} c;
+
 		struct {
 			Coordinate pt;
 			int label;
 			int ncalls;
 			Symbol *callee;
 		} f;
+
 		int seg;
 		Symbol alias;
+
 		struct {
 			Node cse;
 			int replace;
@@ -387,8 +402,11 @@ struct type {
 
 
 struct field {
+    // 域的名字
 	char *name;
+    // 域的类型
 	Type type;
+    // `offset`是该域在结构实例中以字节为单位的偏移量
 	int offset;
 	short bitsize;
 	short lsb;
