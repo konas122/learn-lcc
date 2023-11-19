@@ -118,12 +118,18 @@ typedef struct {
 
 
 #include "config.h"
+
+
+// 类型度量（type metric）指定基本类型的大小和对齐字节数
 typedef struct metrics {
+    // `outofline`标记控制相关类型的常量的放置
+    // 若`outofline`为 1，则该类型的常量不能出现在 dag 中，而是存放在一个匿名的静态变量中
 	unsigned char size, align, outofline;
 } Metrics;
 
 
 typedef struct interface {
+    // 每个基本类型都有相关的类型度量
 	Metrics charmetric;
 	Metrics shortmetric;
 	Metrics intmetric;
@@ -134,6 +140,7 @@ typedef struct interface {
 	Metrics longdoublemetric;
 	Metrics ptrmetric;
 	Metrics structmetric;
+
 	unsigned little_endian:1;
 	unsigned mulops_calls:1;
 	unsigned wants_callb:1;
@@ -141,6 +148,7 @@ typedef struct interface {
 	unsigned left_to_right:1;
 	unsigned wants_dag:1;
 	unsigned unsigned_char:1;
+
 void (*address)(Symbol p, Symbol q, long n);
 void (*blockbeg)(Env *);
 void (*blockend)(Env *);
@@ -166,7 +174,8 @@ void (*stabinit) (char *, int, char *[]);
 void (*stabline) (Coordinate *);
 void (*stabsym)  (Symbol);
 void (*stabtype) (Symbol);
-	Xinterface x;
+
+	Xinterface x;   // `interface`的扩展
 } Interface;
 
 

@@ -550,6 +550,8 @@ Type compose(Type ty1, Type ty2) {
 }
 
 
+// 类型映射
+// `ttob`将类型映射为相应的类型后缀
 int ttob(Type ty) {
 	switch (ty->op) {
 	case CONST: case VOLATILE: case CONST+VOLATILE:
@@ -567,6 +569,9 @@ int ttob(Type ty) {
 	}
 	assert(0); return INT;
 }
+
+
+// `btot`将类型操作符或类型后缀`op`转换为满足`optype(op)==ttob(btot(op))`的类型
 Type btot(int op, int size) {
 #define xx(ty) if (size == (ty)->size) return ty;
 	switch (optype(op)) {
@@ -601,6 +606,8 @@ Type btot(int op, int size) {
 #undef xx
 	assert(0); return 0;
 }
+
+
 int hasproto(Type ty) {
 	if (ty == 0)
 		return 1;
@@ -616,10 +623,13 @@ int hasproto(Type ty) {
 	}
 	assert(0); return 0;
 }
+
+
 /* fieldlist - construct a flat list of fields in type ty */
 Field fieldlist(Type ty) {
 	return ty->u.sym->u.s.flist;
 }
+
 
 /* fieldref - find field name of type ty, return entry */
 Field fieldref(const char *name, Type ty) {
@@ -635,6 +645,7 @@ Field fieldref(const char *name, Type ty) {
 	return p;
 }
 
+
 /* ftype - return a function type for rty function (ty,...)' */
 Type ftype(Type rty, ...) {
 	va_list ap;
@@ -649,6 +660,7 @@ Type ftype(Type rty, ...) {
 	return func(rty, ltov(&list, PERM), 0);
 }
 
+
 /* isfield - if name is a field in flist, return pointer to the field structure */
 static Field isfield(const char *name, Field flist) {
 	for ( ; flist; flist = flist->link)
@@ -656,6 +668,7 @@ static Field isfield(const char *name, Field flist) {
 			break;
 	return flist;
 }
+
 
 /* outtype - output type ty */
 void outtype(Type ty, FILE *f) {
@@ -717,6 +730,7 @@ void outtype(Type ty, FILE *f) {
 	}
 }
 
+
 /* printdecl - output a C declaration for symbol p of type ty */
 void printdecl(Symbol p, Type ty) {
 	switch (p->sclass) {
@@ -731,6 +745,7 @@ void printdecl(Symbol p, Type ty) {
 	default: assert(0);
 	}
 }
+
 
 /* printproto - output a prototype declaration for function p */
 void printproto(Symbol p, Symbol callee[]) {
@@ -747,6 +762,7 @@ void printproto(Symbol p, Symbol callee[]) {
 		printdecl(p, func(freturn(p->type), ltov(&list, PERM), 0));
 	}
 }
+
 
 /* prtype - print details of type ty on f with given indent */
 static void prtype(Type ty, FILE *f, int indent, unsigned mark) {
@@ -809,12 +825,14 @@ static void prtype(Type ty, FILE *f, int indent, unsigned mark) {
 	}
 }
 
+
 /* printtype - print details of type ty on fd */
 void printtype(Type ty, int fd) {
 	static unsigned mark;
 	prtype(ty, fd == 1 ? stdout : stderr, 0, ++mark);
 	fprint(fd == 1 ? stdout : stderr, "\n");
 }
+
 
 /* typestring - return ty as C declaration for str, which may be "" */
 char *typestring(Type ty, char *str) {
