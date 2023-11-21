@@ -205,14 +205,17 @@ enum {
 	LAST
 };
 
+
+// dag 节点
 struct node {
-	short op;
-	short count;
- 	Symbol syms[3];
-	Node kids[2];
-	Node link;
-	Xnode x;
+	short op;       //存放 dag 操作符
+	short count;    //记录节点的值被使用或被其它节点引用的次数
+ 	Symbol syms[3]; // 一些 dag 操作也使用一个或两个符号表指针作为操作数，这些操作数存放在 syms 中
+	Node kids[2];   // 指向操作数节点
+	Node link;      //指向森林中下一个 dag 的根
+	Xnode x;        //后端对节点的扩展
 };
+
 
 enum {
 	F=FLOAT,
@@ -222,6 +225,7 @@ enum {
 	V=VOID,
 	B=STRUCT
 };
+
 
 #define gop(name,value) name=value<<4,
 #define op(name,type,sizes)
